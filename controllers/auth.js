@@ -1,76 +1,30 @@
-const jwt = require('jsonwebtoken');
-const User = require('../models/User');
+const { pool, transaction } = require('../models');
+const { wrap } = require('../helper/http');
+const { fail } = require('../helper/money');
+const bcrypt = require('bcryptjs');
+const { timingSafeEqual } = require('node:crypto');
+const { sign, createUser, userView } = require('../services/Auth');
 
-// Register a new user
-const registerUser = async (req, res) => {
-  try {
-    const { firstName, lastName, username, email, phone, password, role } = req.body;
+exports.getSetupStatus = wrap(async (req,res) => res.json({needsSetup:!(await pool.query('SELECT id FROM users LIMIT 1')).rows.length}));
 
-    // Check if the user already exists by email, username, or phone
-    const existingUser = await User.findOne({ 
-      $or: [{ email }, { username }, { phone }] 
-    });
+exports.setupOwner = wrap(async (req,res) => {
+  const configured = process.env.SETUP_TOKEN || '';
+  const supplied = String(req.body.setupToken || '');
+  if (!configured || Buffer.byteLength(configured)!==Buffer.byteLength(supplied) || !timingSafeEqual(Buffer.from(configured),Buffer.from(supplied))) fail('Valid local SETUP_TOKEN required',403);
+  const result = await transaction(async db => {
+    await db.query('SELECT pg_advisory_xact_lock(85215251)');
+    if ((await db.query('SELECT id FROM users LIMIT 1')).rows.length) fail('Setup has already completed',409);
+    const owner=await createUser(db,req.body,'ADMIN');
+    await db.query('UPDATE settings SET owner_id=$1 WHERE id=1',[owner.id]);
+    return owner;
+  });
+  res.status(201).json(sign(result));
+});
 
-    if (existingUser) {
-      let conflictField;
-      if (existingUser.email === email) conflictField = "email";
-      else if (existingUser.username === username) conflictField = "username";
-      else if (existingUser.phone === phone) conflictField = "phone";
+exports.loginUser = wrap(async (req,res) => {
+  const user = (await pool.query('SELECT * FROM users WHERE email=$1 AND is_active AND id=(SELECT owner_id FROM settings WHERE id=1)',[String(req.body.email || '').trim().toLowerCase()])).rows[0];
+  if (!user || typeof req.body.password !== 'string' || !(await bcrypt.compare(req.body.password,user.password))) fail('Invalid email or password',401);
+  res.json(sign(user));
+});
 
-      return res.status(400).json({ 
-        error: `A user with this ${conflictField} already exists. Please use a different ${conflictField}.`
-      });
-    }
-
-    // Create new user
-    const user = await new User({ firstName, lastName, username, email, phone, password, role }).save();
-
-    // Generate JWT token
-    const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '7d' });
-
-    res.status(201).json({ user, token });
-  } catch (error) {
-    if (error.code === 11000) {
-      // Handle MongoDB duplicate key error
-      const duplicateField = Object.keys(error.keyValue)[0];
-      res.status(400).json({
-        error: `A user with this ${duplicateField} already exists: ${error.keyValue[duplicateField]}. Please use a different ${duplicateField}.`
-      });
-    } else if (error.name === "ValidationError") {
-      // Handle Mongoose validation errors
-      const validationErrors = Object.values(error.errors).map(err => err.message);
-      res.status(400).json({ error: `Validation failed: ${validationErrors.join(", ")}` });
-    } else {
-      // Handle generic server errors
-      res.status(500).json({ error: `Server error: ${error.message}` });
-    }
-  }
-};
-
-// Login user
-const loginUser = async (req, res) => {
-  try {
-    const { email, password } = req.body;
-    const user = await User.findOne({ email });
-    
-    if (!user || !(await user.comparePassword(password))) {
-      return res.status(400).json({ error: 'Invalid credentials' });
-    }
-
-    const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '7d' });
-    res.status(200).json({ user, token });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
-
-const checkUser = async (req, res) => {
-  try {
-    res.status(200).json(req.user);
-  } catch (error) {
-    res.status(400).json({ error: error.message });
-  }
-};
-
-
-module.exports = { registerUser, loginUser,checkUser};
+exports.checkUser = (req,res) => res.json(userView(req.user));

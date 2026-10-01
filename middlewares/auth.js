@@ -1,33 +1,14 @@
 const jwt = require('jsonwebtoken');
-const User = require('../models/User');
-
-// Authenticate user
-const authenticate = async (req, res, next) => {
-  try {
-    const authHeader = req.header('Authorization');
-    const token = authHeader && authHeader.startsWith('Bearer ') ? authHeader.split(' ')[1] : null;
-
-    if (!token) return res.status(401).json({ error: 'Access denied. No token provided.' });
-                                                                  
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = await User.findById(decoded.id).select('-password');
-
-    if (!req.user) return res.status(401).json({ error: 'User not found' });
-
-    next();
-  } catch (error) {
-    res.status(401).json({ error: 'Invalid or expired token' });
-  }
-};
-
-// Authorize based on role
-const authorizeRoles = (...roles) => {
-  return (req, res, next) => {
-    if (!roles.includes(req.user.role)) {
-      return res.status(403).json({ error: 'Access denied. Unauthorized role.' });
-    }
-    next();
-  };
-};
-
-module.exports = { authenticate, authorizeRoles };
+const { pool } = require('../models');
+const { uuid } = require('../services/accounting');
+const { fail } = require('../helper/money');
+const { wrap } = require('../helper/http');
+const authenticate = wrap(async (req,res,next) => {
+  const token = (req.get('Authorization') || '').replace(/^Bearer /,'');
+  let decoded;
+  try { decoded = jwt.verify(token,process.env.JWT_SECRET); } catch { fail('Please sign in',401); }
+  const user = (await pool.query('SELECT * FROM users WHERE id=$1 AND is_active AND id=(SELECT owner_id FROM settings WHERE id=1)',[uuid(decoded.id)])).rows[0];
+  if (!user || (decoded.version || 0)!==user.token_version) fail('Please sign in',401);
+  req.user=user; next();
+});
+module.exports = { authenticate };

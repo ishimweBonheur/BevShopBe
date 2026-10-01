@@ -1,13 +1,14 @@
-# docker-compose.yml
 services:
-  mongodb:
-    image: mongo:7
-    container_name: demostock-mongodb
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: bevshop
+      POSTGRES_USER: bevshop
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD for local Docker use}
     ports:
-      - "27017:27017"
+      - "5432:5432"
     volumes:
-      - mongodb_data:/data/db
-    command: ["mongod", "--replSet", "rs0", "--bind_ip_all"]
+      - postgres_data:/var/lib/postgresql/data
 
 volumes:
-  mongodb_data:
+  postgres_data:

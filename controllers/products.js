@@ -1,159 +1,54 @@
-const Product = require('../models/Product');
-const Joi = require('joi');
-const { v4: uuidv4 } = require('uuid');
+const { pool, transaction } = require('../models');
+const { wrap } = require('../helper/http');
+const { fail } = require('../helper/money');
+const { randomUUID,createHash } = require('node:crypto');
+const { text } = require('../helper/http');
+const { uuid, post } = require('../services/accounting');
+const { Decimal, money, integer, suggestedPrice } = require('../helper/money');
+const productView = row => ({...row,_id:row.id,price:row.selling_price,unitsPerPack:row.units_per_pack,
+  lowStock:row.quantity<=row.low_stock_level,
+  buyingPrice:row.quantity ? new Decimal(row.inventory_value).div(row.quantity).toFixed(6) : row.last_purchase_cost,
+  suggestedPrice:suggestedPrice(row.quantity ? row.inventory_value : row.last_purchase_cost,row.quantity || 1,row.target_margin),
+  category:row.category_id ? {_id:row.category_id,name:row.category_name}:null});
+async function saveProduct(req, res) {
+  const b=req.body; const price=money(b.sellingPrice ?? b.price,'Selling price',true);
+  const params=[text(b.name,'Name'),b.categoryId ? uuid(b.categoryId):null,String(b.description || ''),integer(b.unitsPerPack,'Items per pack'),price.toString(),integer(b.lowStockLevel ?? 12,'Low stock level',0)];
+  const result=await transaction(async db=>{
+    await db.query('SELECT pg_advisory_xact_lock(85215250)');
+    const hash=createHash('sha256').update(JSON.stringify(Object.fromEntries(Object.entries(b).sort(([a],[b])=>a.localeCompare(b))))).digest('hex');
+    if(!req.params.id && b.requestKey) {
+      const previous=(await db.query('SELECT p.*,s.target_margin FROM products p CROSS JOIN settings s WHERE p.creation_key=$1',[uuid(b.requestKey)])).rows[0];
+      if(previous) {if(previous.creation_hash!==hash) fail('Request key already used for a different product',409); return previous;}
+    }
+    const duplicate=(await db.query('SELECT id FROM products WHERE lower(trim(name))=lower(trim($1)) AND ($2::uuid IS NULL OR id<>$2)',[params[0],req.params.id || null])).rows[0];
+    if(duplicate) { const error=new Error('This product already exists.'); error.status=409; error.productId=duplicate.id; throw error; }
+    if(!params[1] || !(await db.query('SELECT id FROM categories WHERE id=$1 AND is_active',[params[1]])).rows.length) fail('Choose an existing category');
+    let saved;
+    if(req.params.id) saved=await db.query('UPDATE products SET name=$1,category_id=$2,description=$3,units_per_pack=$4,selling_price=$5,low_stock_level=$6 WHERE id=$7 RETURNING *',[...params,uuid(req.params.id)]);
+    else saved=await db.query('INSERT INTO products(name,category_id,description,units_per_pack,selling_price,low_stock_level,id,barcode) VALUES($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *',[...params,randomUUID(),b.barcode ? text(b.barcode,'Barcode'):randomUUID()]);
+    if(!saved.rows.length) fail('Product not found',404);
+    const id=saved.rows[0].id;
+    if(!req.params.id && b.requestKey) await db.query('UPDATE products SET creation_key=$2,creation_hash=$3 WHERE id=$1',[id,b.requestKey,hash]);
+    if(!req.params.id) {
+      const packs=integer(b.packs,'Packs');
+      await post(db,'purchase',{requestKey:uuid(b.requestKey),productId:id,packs,unitsPerPack:params[3],totalCost:money(b.amountPerPack,'Amount per pack',true).mul(packs).toFixed(6),supplierId:b.supplierId,date:b.date,notes:'Initial stock'},req.user.id);
+    }
+    return (await db.query('SELECT p.*,s.target_margin,c.name AS category_name FROM products p CROSS JOIN settings s LEFT JOIN categories c ON c.id=p.category_id WHERE p.id=$1',[id])).rows[0];
+  });
+  res.status(req.params.id ? 200:201).json(productView(result));
+}
 
-const productSchema = Joi.object({
-  name: Joi.string().required().messages({
-    'any.required': 'Product name is required.',
-    'string.empty': 'Product name cannot be empty.',
-  }),
-  description: Joi.string().optional(),
-  image: Joi.string().optional(),
-  category: Joi.string().optional(),
-  price: Joi.number().required().messages({
-    'any.required': 'Price is required.',
-    'number.base': 'Price must be a number.',
-  }),
-  isUnique: Joi.boolean().required().messages({
-    'any.required': 'isUnique field is required.',
-  }),
-  quantity: Joi.when('isUnique', {
-    is: true,
-    then: Joi.number().valid(1).messages({
-      'any.only': 'Quantity must be exactly 1 when isUnique is true.',
-    }),
-    otherwise: Joi.number().min(0).messages({
-      'number.min': 'Quantity cannot be less than 0.',
-    }),
-  }).default((parent) => (parent.isUnique ? 1 : 0)),
-  condition: Joi.string().valid('New', 'Like New', 'Good', 'Fair').required().messages({
-    'any.required': 'Condition is required.',
-    'any.only': 'Condition must be one of: New, Like New, Good, Fair.',
-  }),
-  size: Joi.when('isUnique', {
-    is: false,
-    then: Joi.string().optional(),
-  }),
-  color: Joi.when('isUnique', {
-    is: false,
-    then: Joi.string().optional(),
-  }),
-  status: Joi.string().valid('available', 'sold_out').default('available'),
-  barcode: Joi.string().optional(),
+exports.getProducts = wrap(async (req,res) => {
+  const rows=(await pool.query(`SELECT p.*,c.name AS category_name,s.target_margin FROM products p LEFT JOIN categories c ON c.id=p.category_id CROSS JOIN settings s
+    WHERE p.is_active AND (p.name ILIKE $1 OR p.barcode ILIKE $1) ORDER BY p.name`,[`%${String(req.query.search || '')}%`])).rows.map(productView);
+  res.json({list:rows,total:rows.length});
 });
 
-exports.getProducts = async (req, res) => {
-  try {
-    const { page = 1, pageSize = 10, search, categoryId } = req.query;
-    const filters = {};
+exports.createProduct = wrap(saveProduct);
 
-    // Search by name, description, or barcode
-    if (search) {
-      filters.$or = [
-        { name: { $regex: search, $options: "i" } },
-        { description: { $regex: search, $options: "i" } },
-        { barcode: { $regex: search, $options: "i" } },
-      ];
-    }
+exports.updateProduct = wrap(saveProduct);
 
-    // Filter by categoryId if provided
-    if (categoryId) {
-      filters.category = categoryId;
-    }
-
-    const total = await Product.countDocuments(filters);
-    const totalPages = Math.ceil(total / pageSize);
-    const currentPage = parseInt(page, 10);
-    const Size = parseInt(pageSize, 10);
-    const hasNextPage = currentPage < totalPages;
-    const hasPrevPage = currentPage > 1;
-
-    const products = await Product.find(filters)
-    .sort({ createdAt: -1 }) 
-      .skip((currentPage - 1) * Size)
-      .limit(Size)
-      .populate("category")
-      .lean();
-
-    res.status(200).json({
-      list: products,
-      total,
-      totalPages,
-      currentPage,
-      pageSize:Size,
-      nextPage: hasNextPage ? currentPage + 1 : null,
-      prevPage: hasPrevPage ? currentPage - 1 : null,
-    });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
-
-
-exports.getProductById = async (req, res) => {
-  try {
-    const product = await Product.findById(req.params.id).populate('category').lean();
-    if (!product) return res.status(404).json({ error: 'Product not found' });
-
-    res.json(product);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
-
-exports.createProduct = async (req, res) => {
-  try {
-    const { error, value } = productSchema.validate(req.body);
-    if (error) return res.status(400).json({ error: error.details[0].message });
-
-    if (value.isUnique) {
-      value.quantity = 1;
-
-    }
-
-    const product = new Product(value);
-    await product.save();
-    res.status(201).json(product);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
-
-exports.updateProduct = async (req, res) => {
-  try {
-    const { error, value } = productSchema.validate(req.body);
-    if (error) return res.status(400).json({ error: error.details[0].message });
-
-    if (value.isUnique) {
-      value.quantity = 1;
-    }
-
-    const product = await Product.findByIdAndUpdate(req.params.id, value, { new: true }).populate('category');
-    if (!product) return res.status(404).json({ error: 'Product not found' });
-
-    res.json(product);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
-exports.deleteProduct = async (req, res) => {
-  try {
-    const product = await Product.findById(req.params.id);
-
-    if (!product) return res.status(404).json({ error: "Product not found" });
-
-    // Toggle the product's isActive status
-    product.isActive = !product.isActive;
-
-    // Save the updated product
-    await product.save();
-
-    res.json({
-      message: `Product successfully ${product.isActive ? "activated" : "deactivated"}`,
-      product,
-    });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
-
+exports.deleteProduct = wrap(async (req,res) => {
+  const result=await pool.query('UPDATE products SET is_active=false WHERE id=$1 AND quantity=0 RETURNING id',[uuid(req.params.id)]);
+  if (!result.rows.length) fail('Only products with no stock can be archived',409);res.json({success:true});
+});
