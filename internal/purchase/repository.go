@@ -34,7 +34,7 @@ func (r *Repository) List(
 	query := `
 		SELECT
 			p.id,
-			p.supplier_id,
+			COALESCE(p.supplier_id::text, ''),
 			COALESCE(s.name, ''),
 			p.purchase_date,
 			p.total_amount,
@@ -56,7 +56,7 @@ func (r *Repository) List(
 		LEFT JOIN products pr ON pr.id = pi.product_id
 		WHERE ($1::timestamptz IS NULL OR p.purchase_date >= $1)
 		  AND ($2::timestamptz IS NULL OR p.purchase_date < $2)
-		  AND ($3 = '' OR p.supplier_id = $3)
+		  AND (NULLIF($3::text, '') IS NULL OR p.supplier_id = NULLIF($3::text, '')::uuid)
 		GROUP BY p.id, s.name
 		ORDER BY p.purchase_date DESC, p.id DESC
 		LIMIT $4 OFFSET $5
@@ -95,7 +95,7 @@ func (r *Repository) GetByID(ctx context.Context, id string) (Purchase, error) {
 	query := `
 		SELECT
 			p.id,
-			p.supplier_id,
+			COALESCE(p.supplier_id::text, ''),
 			COALESCE(s.name, ''),
 			p.purchase_date,
 			p.total_amount,
@@ -110,7 +110,7 @@ func (r *Repository) GetByID(ctx context.Context, id string) (Purchase, error) {
 				'price_per_pack', pi.price_per_pack,
 				'price_per_item', pi.price_per_item,
 				'total_cost', pi.total_cost
-			) ORDER BY pi.id), '[]'::json)
+			) ORDER BY pi.id) FILTER (WHERE pi.id IS NOT NULL), '[]'::json)
 		FROM purchases p
 		LEFT JOIN suppliers s ON s.id = p.supplier_id
 		LEFT JOIN purchase_items pi ON pi.purchase_id = p.id

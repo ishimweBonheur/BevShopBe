@@ -14,6 +14,12 @@ RUN CGO_ENABLED=0 GOOS=linux go build \
     -o /app/bevshop-api \
     ./cmd/api
 
+RUN CGO_ENABLED=0 GOOS=linux go build \
+    -trimpath \
+    -ldflags="-s -w" \
+    -o /app/bevshop-migrate \
+    ./cmd/migrate
+
 FROM alpine:3.22
 
 WORKDIR /app
@@ -25,6 +31,7 @@ RUN apk add --no-cache \
 ENV TZ=Africa/Kigali
 
 COPY --from=builder /app/bevshop-api ./bevshop-api
+COPY --from=builder /app/bevshop-migrate ./bevshop-migrate
 
 EXPOSE 8080
 

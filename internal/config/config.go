@@ -2,12 +2,14 @@ package config
 
 import (
 	"fmt"
+	"net"
+	"net/url"
 	"os"
 )
 
 type Config struct {
-	AppEnv string
-	Port   string
+	AppEnv    string
+	Port      string
 	JWTSecret string
 
 	DatabaseHost     string
@@ -28,8 +30,8 @@ func Load() Config {
 
 		DatabaseHost:     getEnv("DATABASE_HOST", "postgres"),
 		DatabasePort:     getEnv("DATABASE_PORT", "5432"),
-		DatabaseName:     getEnv("DATABASE_NAME", "bevshop"),
-		DatabaseUser:     getEnv("DATABASE_USER", "bevshop"),
+		DatabaseName:     getEnv("DATABASE_NAME", "beverages"),
+		DatabaseUser:     getEnv("DATABASE_USER", "postgresql"),
 		DatabasePassword: getEnv("DATABASE_PASSWORD", ""),
 
 		RedisHost: getEnv("REDIS_HOST", "redis"),
@@ -38,14 +40,14 @@ func Load() Config {
 }
 
 func (c Config) DatabaseURL() string {
-	return fmt.Sprintf(
-		"postgres://%s:%s@%s:%s/%s?sslmode=disable",
-		c.DatabaseUser,
-		c.DatabasePassword,
-		c.DatabaseHost,
-		c.DatabasePort,
-		c.DatabaseName,
-	)
+	u := url.URL{
+		Scheme:   "postgres",
+		User:     url.UserPassword(c.DatabaseUser, c.DatabasePassword),
+		Host:     net.JoinHostPort(c.DatabaseHost, c.DatabasePort),
+		Path:     "/" + c.DatabaseName,
+		RawQuery: "sslmode=disable",
+	}
+	return u.String()
 }
 
 func (c Config) RedisAddr() string {

@@ -17,44 +17,51 @@ func NewService(repo *Repository) *Service {
 }
 
 func (s *Service) Summary(ctx context.Context, period string, from, to *time.Time) (Summary, error) {
-	if from != nil || to != nil {
-		if from == nil {
-			from = &time.Time{}
-		}
-		if to == nil {
-			now := time.Now()
-			to = &now
-		}
-		return s.repo.Summary(ctx, *from, *to)
+	start, end, err := resolvePeriod(period, from, to, time.Now())
+	if err != nil {
+		return Summary{}, err
 	}
+	return s.repo.Summary(ctx, start, end)
+}
 
-	now := time.Now()
+func (s *Service) Printable(ctx context.Context, period string, from, to *time.Time) (PrintableReport, error) {
+	start, end, err := resolvePeriod(period, from, to, time.Now())
+	if err != nil {
+		return PrintableReport{}, err
+	}
+	return s.repo.Printable(ctx, start, end)
+}
 
-	var start time.Time
+func resolvePeriod(period string, from, to *time.Time, now time.Time) (time.Time, time.Time, error) {
+	zone, err := time.LoadLocation("Africa/Kigali")
+	if err != nil {
+		return time.Time{}, time.Time{}, err
+	}
+	now = now.In(zone)
+	if from != nil || to != nil {
+		if from == nil || to == nil || !from.Before(*to) {
+			return time.Time{}, time.Time{}, ErrInvalidPeriod
+		}
+		return from.In(zone), to.In(zone), nil
+	}
+	start := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, zone)
 	var end time.Time
-
 	switch period {
 	case "", "today":
-		start = time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
 		end = start.AddDate(0, 0, 1)
 	case "week":
-		weekday := int(now.Weekday())
-		if weekday == 0 {
-			weekday = 7
-		}
-		start = time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location()).AddDate(0, 0, -(weekday-1))
+		start = start.AddDate(0, 0, -((int(now.Weekday()) + 6) % 7))
 		end = start.AddDate(0, 0, 7)
 	case "month":
-		start = time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location())
+		start = time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, zone)
 		end = start.AddDate(0, 1, 0)
 	case "year":
-		start = time.Date(now.Year(), time.January, 1, 0, 0, 0, 0, now.Location())
+		start = time.Date(now.Year(), 1, 1, 0, 0, 0, 0, zone)
 		end = start.AddDate(1, 0, 0)
 	default:
-		return Summary{}, ErrInvalidPeriod
+		return time.Time{}, time.Time{}, ErrInvalidPeriod
 	}
-
-	return s.repo.Summary(ctx, start, end)
+	return start, end, nil
 }
 
 func (s *Service) Dashboard(ctx context.Context, from, to *time.Time) (Dashboard, error) {

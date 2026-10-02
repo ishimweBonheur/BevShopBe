@@ -4,6 +4,7 @@ import (
 	"bevshop/internal/httpx"
 	"encoding/json"
 	"errors"
+	"log"
 	"net/http"
 	"strconv"
 	"time"
@@ -52,6 +53,7 @@ func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
 
 	items, err := h.service.List(r.Context(), from, to, r.URL.Query().Get("supplier_id"), limit, offset)
 	if err != nil {
+		log.Printf("failed to load purchases: %v", err)
 		httpx.Error(w, http.StatusInternalServerError, "failed to load purchases")
 		return
 	}

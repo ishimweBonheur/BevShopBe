@@ -4,6 +4,7 @@ import (
 	"bevshop/internal/httpx"
 	"encoding/json"
 	"errors"
+	"log"
 	"net/http"
 )
 
@@ -28,6 +29,7 @@ func (h *Handler) Register(mux *http.ServeMux) {
 func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
 	items, err := h.service.List(r.Context())
 	if err != nil {
+		log.Printf("failed to load products: %v", err)
 		httpx.Error(w, http.StatusInternalServerError, "failed to load products")
 		return
 	}
@@ -135,6 +137,7 @@ func writeProductError(w http.ResponseWriter, err error) {
 		httpx.Error(w, http.StatusNotFound, "product not found")
 
 	default:
+		log.Printf("product request failed: %v", err)
 		httpx.Error(w, http.StatusInternalServerError, "something went wrong")
 	}
 }

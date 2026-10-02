@@ -16,10 +16,10 @@ type Summary struct {
 }
 
 type Dashboard struct {
-	Summary          Summary `json:"summary"`
-	InventoryValue   float64 `json:"inventory_value"`
-	ProfitMargin     float64 `json:"profit_margin"`
-	TopProducts      []ProductSummary `json:"top_products"`
+	Summary        Summary          `json:"summary"`
+	InventoryValue float64          `json:"inventory_value"`
+	ProfitMargin   float64          `json:"profit_margin"`
+	TopProducts    []ProductSummary `json:"top_products"`
 }
 
 type ProductSummary struct {
@@ -36,4 +36,20 @@ type HistoryItem struct {
 	Description string    `json:"description"`
 	Amount      float64   `json:"amount"`
 	ReferenceID string    `json:"reference_id,omitempty"`
+	Category    string    `json:"category"`
+	Quantity    *int      `json:"quantity"`
+	Details     string    `json:"details"`
+}
+
+type Period struct {
+	From time.Time `json:"from"`
+	To   time.Time `json:"to"`
+}
+
+type PrintableReport struct {
+	Title       string        `json:"title"`
+	Period      Period        `json:"period"`
+	GeneratedAt time.Time     `json:"generated_at"`
+	Summary     Summary       `json:"summary"`
+	History     []HistoryItem `json:"history"`
 }
