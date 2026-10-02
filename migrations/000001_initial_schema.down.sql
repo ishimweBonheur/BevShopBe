@@ -1,0 +1,21 @@
+DROP TABLE IF EXISTS owner_money;
+
+DROP TABLE IF EXISTS damaged_items;
+
+DROP TABLE IF EXISTS expenses;
+
+DROP TABLE IF EXISTS sale_items;
+
+DROP TABLE IF EXISTS sales;
+
+DROP TABLE IF EXISTS purchase_items;
+
+DROP TABLE IF EXISTS purchases;
+
+DROP TABLE IF EXISTS suppliers;
+
+DROP TABLE IF EXISTS products;
+
+DROP TABLE IF EXISTS categories;
+
+DROP TABLE IF EXISTS users;

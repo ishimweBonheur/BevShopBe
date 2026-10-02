@@ -1,0 +1,3558 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "BevShop API",
+    "version": "1.0.0",
+    "description": "Single-owner beverage shop API. Use auth/setup once, or auth/login, then copy the returned token into Authorize (without the Bearer prefix). Request IDs must reference existing records. Dates use RFC3339 timestamps with an explicit timezone. This document describes the currently implemented routes."
+  },
+  "servers": [
+    {
+      "url": "/"
+    }
+  ],
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "tags": [
+    {
+      "name": "Health"
+    },
+    {
+      "name": "Authentication"
+    },
+    {
+      "name": "Categories"
+    },
+    {
+      "name": "Products"
+    },
+    {
+      "name": "Suppliers"
+    },
+    {
+      "name": "Purchases"
+    },
+    {
+      "name": "Sales"
+    },
+    {
+      "name": "Expenses"
+    },
+    {
+      "name": "Damaged Items"
+    },
+    {
+      "name": "Owner Money"
+    },
+    {
+      "name": "Reports"
+    },
+    {
+      "name": "History"
+    }
+  ],
+  "paths": {
+    "/api/v1/auth/setup": {
+      "post": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Set up the owner",
+        "operationId": "auth_setup",
+        "responses": {
+          "201": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/auth_LoginResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request body or field values.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Duplicate record, record in use, or insufficient stock.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/auth_SetupRequest"
+              },
+              "example": {
+                "name": "Shop Owner",
+                "email": "owner@example.com",
+                "phone": "0780000000",
+                "password": "example-password"
+              }
+            }
+          }
+        },
+        "description": "Creates the single owner and returns an access token. Returns 409 if an owner already exists."
+      }
+    },
+    "/api/v1/auth/login": {
+      "post": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Log in",
+        "operationId": "auth_login",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/auth_LoginResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request body or field values.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, expired or revoked token; invalid credentials.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/auth_LoginRequest"
+              },
+              "example": {
+                "email": "owner@example.com",
+                "password": "example-password"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/logout": {
+      "post": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Log out",
+        "operationId": "auth_logout",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, expired or revoked token; invalid credentials.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/me": {
+      "get": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Get current owner",
+        "operationId": "auth_me",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/auth_User"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, expired or revoked token; invalid credentials.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/profile": {
+      "put": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Update owner profile",
+        "operationId": "auth_profile",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/auth_User"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request body or field values.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, expired or revoked token; invalid credentials.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/auth_ProfileRequest"
+              },
+              "example": {
+                "name": "Shop Owner",
+                "phone": "0780000000"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/password": {
+      "put": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Change password",
+        "operationId": "auth_password",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request body or field values.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, expired or revoked token; invalid credentials.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/auth_PasswordRequest"
+              },
+              "example": {
+                "current_password": "example-password",
+                "new_password": "new-example-password"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/categories": {
+      "get": {
+        "tags": [
+          "Categories"
+        ],
+        "summary": "List categories",
+        "operationId": "category_list",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/category_Category"
+                  },
+                  "nullable": true
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, expired or revoked token; invalid credentials.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Categories"
+        ],
+        "summary": "Create category",
+        "operationId": "category_create",
+        "responses": {
+          "201": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/category_Category"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request body or field values.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, expired or revoked token; invalid credentials.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Duplicate record, record in use, or insufficient stock.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/category_CreateRequest"
+              },
+              "example": {
+                "name": "Soft Drinks",
+                "description": ""
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/categories/{id}": {
+      "put": {
+        "tags": [
+          "Categories"
+        ],
+        "summary": "Update category",
+        "operationId": "category_update",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/category_Category"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request body or field values.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, expired or revoked token; invalid credentials.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Record or referenced record not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Duplicate record, record in use, or insufficient stock.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "ID of the existing record.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "example": "11111111-1111-4111-8111-111111111111"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/category_UpdateRequest"
+              },
+              "example": {
+                "name": "Soft Drinks",
+                "description": ""
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Categories"
+        ],
+        "summary": "Delete category",
+        "operationId": "category_delete",
+        "responses": {
+          "204": {
+            "description": "Deleted; no response body."
+          },
+          "401": {
+            "description": "Missing, invalid, expired or revoked token; invalid credentials.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Record or referenced record not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Duplicate record, record in use, or insufficient stock.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "ID of the existing record.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "example": "11111111-1111-4111-8111-111111111111"
+          }
+        ]
+      }
+    },
+    "/api/v1/products": {
+      "get": {
+        "tags": [
+          "Products"
+        ],
+        "summary": "List products",
+        "operationId": "product_list",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/product_Product"
+                  },
+                  "nullable": true
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, expired or revoked token; invalid credentials.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Products"
+        ],
+        "summary": "Create product",
+        "operationId": "product_create",
+        "responses": {
+          "201": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/product_Product"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request body or field values.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, expired or revoked token; invalid credentials.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Product not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Product already exists.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/product_CreateRequest"
+              },
+              "example": {
+                "name": "Coca-Cola 500ml",
+                "category_id": "11111111-1111-4111-8111-111111111111",
+                "description": "",
+                "units_per_pack": 24,
+                "selling_price": 700,
+                "low_stock_level": 20
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/products/{id}": {
+      "get": {
+        "tags": [
+          "Products"
+        ],
+        "summary": "Get product",
+        "operationId": "product_get",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/product_Product"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, expired or revoked token; invalid credentials.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Record or referenced record not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "ID of the existing record.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "example": "11111111-1111-4111-8111-111111111111"
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "Products"
+        ],
+        "summary": "Update product",
+        "operationId": "product_update",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/product_Product"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request body or field values.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, expired or revoked token; invalid credentials.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Product not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Product already exists.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "ID of the existing record.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "example": "11111111-1111-4111-8111-111111111111"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/product_UpdateRequest"
+              },
+              "example": {
+                "name": "Coca-Cola 500ml",
+                "category_id": "11111111-1111-4111-8111-111111111111",
+                "description": "",
+                "units_per_pack": 24,
+                "selling_price": 700,
+                "low_stock_level": 20
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/products/{id}/deactivate": {
+      "patch": {
+        "tags": [
+          "Products"
+        ],
+        "summary": "Deactivate product",
+        "operationId": "product_deactivate",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, expired or revoked token; invalid credentials.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Record or referenced record not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "ID of the existing record.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "example": "11111111-1111-4111-8111-111111111111"
+          }
+        ]
+      }
+    },
+    "/api/v1/suppliers": {
+      "get": {
+        "tags": [
+          "Suppliers"
+        ],
+        "summary": "List suppliers",
+        "operationId": "supplier_list",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/supplier_Supplier"
+                  },
+                  "nullable": true
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, expired or revoked token; invalid credentials.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Suppliers"
+        ],
+        "summary": "Create supplier",
+        "operationId": "supplier_create",
+        "responses": {
+          "201": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/supplier_Supplier"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request body or field values.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, expired or revoked token; invalid credentials.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Duplicate record, record in use, or insufficient stock.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/supplier_CreateRequest"
+              },
+              "example": {
+                "name": "Main Supplier",
+                "phone": "0780000000",
+                "email": "owner@example.com",
+                "address": "Kigali",
+                "notes": ""
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/suppliers/{id}": {
+      "put": {
+        "tags": [
+          "Suppliers"
+        ],
+        "summary": "Update supplier",
+        "operationId": "supplier_update",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/supplier_Supplier"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request body or field values.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, expired or revoked token; invalid credentials.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Record or referenced record not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Duplicate record, record in use, or insufficient stock.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "ID of the existing record.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "example": "11111111-1111-4111-8111-111111111111"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/supplier_UpdateRequest"
+              },
+              "example": {
+                "name": "Main Supplier",
+                "phone": "0780000000",
+                "email": "owner@example.com",
+                "address": "Kigali",
+                "notes": ""
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Suppliers"
+        ],
+        "summary": "Delete supplier",
+        "operationId": "supplier_delete",
+        "responses": {
+          "204": {
+            "description": "Deleted; no response body."
+          },
+          "401": {
+            "description": "Missing, invalid, expired or revoked token; invalid credentials.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Record or referenced record not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Duplicate record, record in use, or insufficient stock.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "ID of the existing record.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "example": "11111111-1111-4111-8111-111111111111"
+          }
+        ]
+      }
+    },
+    "/api/v1/purchases": {
+      "get": {
+        "tags": [
+          "Purchases"
+        ],
+        "summary": "List purchases",
+        "operationId": "purchase_list",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/purchase_Purchase"
+                  },
+                  "nullable": true
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, expired or revoked token; invalid credentials.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "required": false,
+            "description": "Inclusive start, as an RFC3339 timestamp with timezone. Date-only strings are not supported.",
+            "schema": {
+              "type": "string",
+              "format": "date-time",
+              "example": "2026-10-01T00:00:00+02:00"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": false,
+            "description": "Exclusive end, as an RFC3339 timestamp with timezone. Date-only strings are not supported.",
+            "schema": {
+              "type": "string",
+              "format": "date-time",
+              "example": "2026-11-01T00:00:00+02:00"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Maximum records to return.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 50
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "description": "Number of records to skip.",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            }
+          },
+          {
+            "name": "supplier_id",
+            "in": "query",
+            "required": false,
+            "description": "Optional filter.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Purchases"
+        ],
+        "summary": "Create purchase",
+        "operationId": "purchase_create",
+        "responses": {
+          "201": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/purchase_Purchase"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request body or field values.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, expired or revoked token; invalid credentials.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Record or referenced record not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/purchase_CreateRequest"
+              },
+              "example": {
+                "supplier_id": "11111111-1111-4111-8111-111111111111",
+                "notes": "",
+                "items": [
+                  {
+                    "product_id": "11111111-1111-4111-8111-111111111111",
+                    "packs": 10,
+                    "price_per_pack": 12000
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/purchases/{id}": {
+      "get": {
+        "tags": [
+          "Purchases"
+        ],
+        "summary": "Get purchase",
+        "operationId": "purchase_get",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/purchase_Purchase"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, expired or revoked token; invalid credentials.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Record or referenced record not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "ID of the existing record.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "example": "11111111-1111-4111-8111-111111111111"
+          }
+        ]
+      }
+    },
+    "/api/v1/sales": {
+      "get": {
+        "tags": [
+          "Sales"
+        ],
+        "summary": "List sales",
+        "operationId": "sale_list",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/sale_Sale"
+                  },
+                  "nullable": true
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, expired or revoked token; invalid credentials.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "required": false,
+            "description": "Inclusive start, as an RFC3339 timestamp with timezone. Date-only strings are not supported.",
+            "schema": {
+              "type": "string",
+              "format": "date-time",
+              "example": "2026-10-01T00:00:00+02:00"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": false,
+            "description": "Exclusive end, as an RFC3339 timestamp with timezone. Date-only strings are not supported.",
+            "schema": {
+              "type": "string",
+              "format": "date-time",
+              "example": "2026-11-01T00:00:00+02:00"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Maximum records to return.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 50
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "description": "Number of records to skip.",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            }
+          },
+          {
+            "name": "payment_method",
+            "in": "query",
+            "required": false,
+            "description": "Optional filter.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "cash",
+                "mobile_money",
+                "bank"
+              ]
+            }
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Sales"
+        ],
+        "summary": "Create sale",
+        "operationId": "sale_create",
+        "responses": {
+          "201": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/sale_Sale"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request body or field values.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, expired or revoked token; invalid credentials.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Record or referenced record not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Duplicate record, record in use, or insufficient stock.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/sale_CreateRequest"
+              },
+              "example": {
+                "payment_method": "cash",
+                "notes": "",
+                "items": [
+                  {
+                    "product_id": "11111111-1111-4111-8111-111111111111",
+                    "quantity": 5,
+                    "selling_price": 700
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/sales/{id}": {
+      "get": {
+        "tags": [
+          "Sales"
+        ],
+        "summary": "Get sale",
+        "operationId": "sale_get",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/sale_Sale"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, expired or revoked token; invalid credentials.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Record or referenced record not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "ID of the existing record.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "example": "11111111-1111-4111-8111-111111111111"
+          }
+        ]
+      }
+    },
+    "/api/v1/expenses": {
+      "get": {
+        "tags": [
+          "Expenses"
+        ],
+        "summary": "List expenses",
+        "operationId": "expense_list",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/expense_Expense"
+                  },
+                  "nullable": true
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, expired or revoked token; invalid credentials.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Expenses"
+        ],
+        "summary": "Create expense",
+        "operationId": "expense_create",
+        "responses": {
+          "201": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/expense_Expense"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request body or field values.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, expired or revoked token; invalid credentials.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/expense_CreateRequest"
+              },
+              "example": {
+                "name": "Transport",
+                "category": "Transport",
+                "description": "",
+                "amount": 5000
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/expenses/{id}": {
+      "put": {
+        "tags": [
+          "Expenses"
+        ],
+        "summary": "Update expense",
+        "operationId": "expense_update",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/expense_Expense"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request body or field values.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, expired or revoked token; invalid credentials.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Record or referenced record not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "ID of the existing record.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "example": "11111111-1111-4111-8111-111111111111"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/expense_UpdateRequest"
+              },
+              "example": {
+                "name": "Transport",
+                "category": "Transport",
+                "description": "",
+                "amount": 5000
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/damaged-items": {
+      "get": {
+        "tags": [
+          "Damaged Items"
+        ],
+        "summary": "List damaged items",
+        "operationId": "damaged_list",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/damaged_Record"
+                  },
+                  "nullable": true
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, expired or revoked token; invalid credentials.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Damaged Items"
+        ],
+        "summary": "Create record",
+        "operationId": "damaged_create",
+        "responses": {
+          "201": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/damaged_Record"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request body or field values.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, expired or revoked token; invalid credentials.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Record or referenced record not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Duplicate record, record in use, or insufficient stock.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/damaged_CreateRequest"
+              },
+              "example": {
+                "product_id": "11111111-1111-4111-8111-111111111111",
+                "quantity": 5,
+                "reason": "Broken bottle"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/owner-money": {
+      "get": {
+        "tags": [
+          "Owner Money"
+        ],
+        "summary": "List owner money",
+        "operationId": "owner_money_list",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/owner_money_Entry"
+                  },
+                  "nullable": true
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, expired or revoked token; invalid credentials.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Owner Money"
+        ],
+        "summary": "Create entry",
+        "operationId": "owner_money_create",
+        "responses": {
+          "201": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/owner_money_Entry"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request body or field values.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, expired or revoked token; invalid credentials.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/owner_money_CreateRequest"
+              },
+              "example": {
+                "type": "money_added",
+                "amount": 5000,
+                "notes": ""
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/reports/summary": {
+      "get": {
+        "tags": [
+          "Reports"
+        ],
+        "summary": "Get report summary",
+        "operationId": "report_summary",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/report_Summary"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request body or field values.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, expired or revoked token; invalid credentials.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "period",
+            "in": "query",
+            "required": false,
+            "description": "Calendar period in Africa/Kigali. A valid from or to overrides this period.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "today",
+                "week",
+                "month",
+                "year"
+              ],
+              "default": "today"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "required": false,
+            "description": "Inclusive start, as an RFC3339 timestamp with timezone. Date-only strings are not supported.",
+            "schema": {
+              "type": "string",
+              "format": "date-time",
+              "example": "2026-10-01T00:00:00+02:00"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": false,
+            "description": "Exclusive end, as an RFC3339 timestamp with timezone. Date-only strings are not supported.",
+            "schema": {
+              "type": "string",
+              "format": "date-time",
+              "example": "2026-11-01T00:00:00+02:00"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/reports/dashboard": {
+      "get": {
+        "tags": [
+          "Reports"
+        ],
+        "summary": "Get dashboard",
+        "operationId": "report_dashboard",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/report_Dashboard"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, expired or revoked token; invalid credentials.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "required": false,
+            "description": "Inclusive start, as an RFC3339 timestamp with timezone. Date-only strings are not supported.",
+            "schema": {
+              "type": "string",
+              "format": "date-time",
+              "example": "2026-10-01T00:00:00+02:00"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": false,
+            "description": "Exclusive end, as an RFC3339 timestamp with timezone. Date-only strings are not supported.",
+            "schema": {
+              "type": "string",
+              "format": "date-time",
+              "example": "2026-11-01T00:00:00+02:00"
+            }
+          }
+        ],
+        "description": "Defaults to the current calendar month. Supply both from and to to select a custom interval."
+      }
+    },
+    "/api/v1/history": {
+      "get": {
+        "tags": [
+          "History"
+        ],
+        "summary": "Get unified history",
+        "operationId": "report_history",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/report_HistoryItem"
+                  },
+                  "nullable": true
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, expired or revoked token; invalid credentials.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "required": false,
+            "description": "Inclusive start, as an RFC3339 timestamp with timezone. Date-only strings are not supported.",
+            "schema": {
+              "type": "string",
+              "format": "date-time",
+              "example": "2026-10-01T00:00:00+02:00"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": false,
+            "description": "Exclusive end, as an RFC3339 timestamp with timezone. Date-only strings are not supported.",
+            "schema": {
+              "type": "string",
+              "format": "date-time",
+              "example": "2026-11-01T00:00:00+02:00"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Maximum records to return.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 50
+            }
+          }
+        ],
+        "description": "Returns newest activity first. Defaults from the first day of this month to now."
+      }
+    },
+    "/health": {
+      "get": {
+        "tags": [
+          "Health"
+        ],
+        "summary": "Check service health",
+        "operationId": "health",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "API, PostgreSQL and Redis status.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Health"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Paste the token from setup or login."
+      }
+    },
+    "schemas": {
+      "auth_User": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "11111111-1111-4111-8111-111111111111"
+          },
+          "name": {
+            "type": "string",
+            "example": "Shop Owner"
+          },
+          "email": {
+            "type": "string",
+            "example": "owner@example.com"
+          },
+          "phone": {
+            "type": "string",
+            "example": "0780000000"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-10-02T10:00:00+02:00"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-10-02T10:00:00+02:00"
+          }
+        }
+      },
+      "auth_SetupRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Shop Owner"
+          },
+          "email": {
+            "type": "string",
+            "example": "owner@example.com"
+          },
+          "phone": {
+            "type": "string",
+            "example": "0780000000"
+          },
+          "password": {
+            "type": "string",
+            "example": "example-password",
+            "minLength": 6,
+            "format": "password"
+          }
+        },
+        "required": [
+          "name",
+          "email",
+          "password"
+        ]
+      },
+      "auth_LoginRequest": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "example": "owner@example.com"
+          },
+          "password": {
+            "type": "string",
+            "example": "example-password",
+            "minLength": 6,
+            "format": "password"
+          }
+        },
+        "required": [
+          "email",
+          "password"
+        ]
+      },
+      "auth_ProfileRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Shop Owner",
+            "minLength": 1
+          },
+          "phone": {
+            "type": "string",
+            "example": "0780000000"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "auth_PasswordRequest": {
+        "type": "object",
+        "properties": {
+          "current_password": {
+            "type": "string",
+            "example": "example-password",
+            "format": "password"
+          },
+          "new_password": {
+            "type": "string",
+            "example": "new-example-password",
+            "minLength": 6,
+            "format": "password"
+          }
+        },
+        "required": [
+          "current_password",
+          "new_password"
+        ]
+      },
+      "auth_LoginResponse": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
+            "example": "JWT returned by login"
+          },
+          "user": {
+            "$ref": "#/components/schemas/auth_User"
+          }
+        }
+      },
+      "category_Category": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "11111111-1111-4111-8111-111111111111"
+          },
+          "name": {
+            "type": "string",
+            "example": "Soft Drinks"
+          },
+          "description": {
+            "type": "string",
+            "example": ""
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-10-02T10:00:00+02:00"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-10-02T10:00:00+02:00"
+          }
+        }
+      },
+      "category_CreateRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Soft Drinks",
+            "minLength": 1
+          },
+          "description": {
+            "type": "string",
+            "example": ""
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "category_UpdateRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Soft Drinks",
+            "minLength": 1
+          },
+          "description": {
+            "type": "string",
+            "example": ""
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "product_Product": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "11111111-1111-4111-8111-111111111111"
+          },
+          "category_id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "11111111-1111-4111-8111-111111111111"
+          },
+          "category_name": {
+            "type": "string",
+            "example": "category_name"
+          },
+          "name": {
+            "type": "string",
+            "example": "Coca-Cola 500ml"
+          },
+          "description": {
+            "type": "string",
+            "example": ""
+          },
+          "units_per_pack": {
+            "type": "integer",
+            "example": 24
+          },
+          "selling_price": {
+            "type": "number",
+            "example": 700
+          },
+          "average_cost_per_item": {
+            "type": "number",
+            "example": 0
+          },
+          "current_stock": {
+            "type": "integer",
+            "example": 0
+          },
+          "low_stock_level": {
+            "type": "integer",
+            "example": 20
+          },
+          "stock_status": {
+            "type": "string",
+            "example": "stock_status"
+          },
+          "is_active": {
+            "type": "boolean",
+            "example": true
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-10-02T10:00:00+02:00"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-10-02T10:00:00+02:00"
+          }
+        }
+      },
+      "product_CreateRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Coca-Cola 500ml",
+            "minLength": 1
+          },
+          "category_id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "11111111-1111-4111-8111-111111111111"
+          },
+          "description": {
+            "type": "string",
+            "example": ""
+          },
+          "units_per_pack": {
+            "type": "integer",
+            "example": 24,
+            "minimum": 1
+          },
+          "selling_price": {
+            "type": "number",
+            "example": 700,
+            "minimum": 0
+          },
+          "low_stock_level": {
+            "type": "integer",
+            "example": 20,
+            "minimum": 0
+          }
+        },
+        "required": [
+          "name",
+          "category_id",
+          "units_per_pack"
+        ]
+      },
+      "product_UpdateRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Coca-Cola 500ml",
+            "minLength": 1
+          },
+          "category_id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "11111111-1111-4111-8111-111111111111"
+          },
+          "description": {
+            "type": "string",
+            "example": ""
+          },
+          "units_per_pack": {
+            "type": "integer",
+            "example": 24,
+            "minimum": 1
+          },
+          "selling_price": {
+            "type": "number",
+            "example": 700,
+            "minimum": 0
+          },
+          "low_stock_level": {
+            "type": "integer",
+            "example": 20,
+            "minimum": 0
+          }
+        },
+        "required": [
+          "name",
+          "category_id",
+          "units_per_pack"
+        ]
+      },
+      "supplier_Supplier": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "11111111-1111-4111-8111-111111111111"
+          },
+          "name": {
+            "type": "string",
+            "example": "Main Supplier"
+          },
+          "phone": {
+            "type": "string",
+            "example": "0780000000"
+          },
+          "email": {
+            "type": "string",
+            "example": "owner@example.com"
+          },
+          "address": {
+            "type": "string",
+            "example": "Kigali"
+          },
+          "notes": {
+            "type": "string",
+            "example": ""
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-10-02T10:00:00+02:00"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-10-02T10:00:00+02:00"
+          }
+        }
+      },
+      "supplier_CreateRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Main Supplier",
+            "minLength": 1
+          },
+          "phone": {
+            "type": "string",
+            "example": "0780000000"
+          },
+          "email": {
+            "type": "string",
+            "example": "owner@example.com"
+          },
+          "address": {
+            "type": "string",
+            "example": "Kigali"
+          },
+          "notes": {
+            "type": "string",
+            "example": ""
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "supplier_UpdateRequest": {
+        "$ref": "#/components/schemas/supplier_CreateRequest"
+      },
+      "purchase_CreateItemRequest": {
+        "type": "object",
+        "properties": {
+          "product_id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "11111111-1111-4111-8111-111111111111"
+          },
+          "packs": {
+            "type": "integer",
+            "example": 10,
+            "minimum": 1
+          },
+          "price_per_pack": {
+            "type": "number",
+            "example": 12000,
+            "minimum": 0,
+            "exclusiveMinimum": true
+          }
+        },
+        "required": [
+          "product_id",
+          "packs",
+          "price_per_pack"
+        ]
+      },
+      "purchase_CreateRequest": {
+        "type": "object",
+        "properties": {
+          "supplier_id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "11111111-1111-4111-8111-111111111111"
+          },
+          "notes": {
+            "type": "string",
+            "example": ""
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/purchase_CreateItemRequest"
+            },
+            "nullable": false,
+            "minItems": 1
+          }
+        },
+        "required": [
+          "supplier_id",
+          "items"
+        ]
+      },
+      "purchase_PurchaseItem": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "11111111-1111-4111-8111-111111111111"
+          },
+          "product_id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "11111111-1111-4111-8111-111111111111"
+          },
+          "product_name": {
+            "type": "string",
+            "example": "product_name"
+          },
+          "packs": {
+            "type": "integer",
+            "example": 10
+          },
+          "units_per_pack": {
+            "type": "integer",
+            "example": 24
+          },
+          "total_items": {
+            "type": "integer",
+            "example": 0
+          },
+          "price_per_pack": {
+            "type": "number",
+            "example": 12000
+          },
+          "price_per_item": {
+            "type": "number",
+            "example": 0
+          },
+          "total_cost": {
+            "type": "number",
+            "example": 0
+          }
+        }
+      },
+      "purchase_Purchase": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "11111111-1111-4111-8111-111111111111"
+          },
+          "supplier_id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "11111111-1111-4111-8111-111111111111"
+          },
+          "supplier_name": {
+            "type": "string",
+            "example": "supplier_name"
+          },
+          "purchase_date": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-10-02T10:00:00+02:00"
+          },
+          "total_amount": {
+            "type": "number",
+            "example": 0
+          },
+          "notes": {
+            "type": "string",
+            "example": ""
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/purchase_PurchaseItem"
+            },
+            "nullable": true
+          }
+        }
+      },
+      "sale_CreateItemRequest": {
+        "type": "object",
+        "properties": {
+          "product_id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "11111111-1111-4111-8111-111111111111"
+          },
+          "quantity": {
+            "type": "integer",
+            "example": 5,
+            "minimum": 1
+          },
+          "selling_price": {
+            "type": "number",
+            "example": 700,
+            "minimum": 0,
+            "exclusiveMinimum": true
+          }
+        },
+        "required": [
+          "product_id",
+          "quantity",
+          "selling_price"
+        ]
+      },
+      "sale_CreateRequest": {
+        "type": "object",
+        "properties": {
+          "payment_method": {
+            "type": "string",
+            "example": "cash",
+            "enum": [
+              "cash",
+              "mobile_money",
+              "bank"
+            ]
+          },
+          "notes": {
+            "type": "string",
+            "example": ""
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/sale_CreateItemRequest"
+            },
+            "nullable": false,
+            "minItems": 1
+          }
+        },
+        "required": [
+          "payment_method",
+          "items"
+        ]
+      },
+      "sale_SaleItem": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "11111111-1111-4111-8111-111111111111"
+          },
+          "product_id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "11111111-1111-4111-8111-111111111111"
+          },
+          "product_name": {
+            "type": "string",
+            "example": "product_name"
+          },
+          "quantity": {
+            "type": "integer",
+            "example": 5
+          },
+          "selling_price_per_item": {
+            "type": "number",
+            "example": 0
+          },
+          "cost_price_per_item": {
+            "type": "number",
+            "example": 0
+          },
+          "line_total": {
+            "type": "number",
+            "example": 0
+          },
+          "line_cost": {
+            "type": "number",
+            "example": 0
+          }
+        }
+      },
+      "sale_Sale": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "11111111-1111-4111-8111-111111111111"
+          },
+          "sale_date": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-10-02T10:00:00+02:00"
+          },
+          "payment_method": {
+            "type": "string",
+            "example": "cash"
+          },
+          "total_amount": {
+            "type": "number",
+            "example": 0
+          },
+          "notes": {
+            "type": "string",
+            "example": ""
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/sale_SaleItem"
+            },
+            "nullable": true
+          }
+        }
+      },
+      "expense_Expense": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "11111111-1111-4111-8111-111111111111"
+          },
+          "name": {
+            "type": "string",
+            "example": "Transport"
+          },
+          "category": {
+            "type": "string",
+            "example": "Transport"
+          },
+          "description": {
+            "type": "string",
+            "example": ""
+          },
+          "amount": {
+            "type": "number",
+            "example": 5000
+          },
+          "expense_date": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-10-02T10:00:00+02:00"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-10-02T10:00:00+02:00"
+          }
+        }
+      },
+      "expense_CreateRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Transport",
+            "minLength": 1
+          },
+          "category": {
+            "type": "string",
+            "example": "Transport"
+          },
+          "description": {
+            "type": "string",
+            "example": ""
+          },
+          "amount": {
+            "type": "number",
+            "example": 5000,
+            "minimum": 0,
+            "exclusiveMinimum": true
+          }
+        },
+        "required": [
+          "name",
+          "amount"
+        ]
+      },
+      "expense_UpdateRequest": {
+        "$ref": "#/components/schemas/expense_CreateRequest"
+      },
+      "damaged_Record": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "11111111-1111-4111-8111-111111111111"
+          },
+          "product_id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "11111111-1111-4111-8111-111111111111"
+          },
+          "product_name": {
+            "type": "string",
+            "example": "product_name"
+          },
+          "quantity": {
+            "type": "integer",
+            "example": 5
+          },
+          "reason": {
+            "type": "string",
+            "example": "Broken bottle"
+          },
+          "cost_per_item": {
+            "type": "number",
+            "example": 0
+          },
+          "total_loss": {
+            "type": "number",
+            "example": 0
+          },
+          "damaged_date": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-10-02T10:00:00+02:00"
+          }
+        }
+      },
+      "damaged_CreateRequest": {
+        "type": "object",
+        "properties": {
+          "product_id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "11111111-1111-4111-8111-111111111111"
+          },
+          "quantity": {
+            "type": "integer",
+            "example": 5,
+            "minimum": 1
+          },
+          "reason": {
+            "type": "string",
+            "example": "Broken bottle"
+          }
+        },
+        "required": [
+          "product_id",
+          "quantity"
+        ]
+      },
+      "owner_money_Entry": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "11111111-1111-4111-8111-111111111111"
+          },
+          "type": {
+            "type": "string",
+            "example": "money_added"
+          },
+          "amount": {
+            "type": "number",
+            "example": 5000
+          },
+          "notes": {
+            "type": "string",
+            "example": ""
+          },
+          "entry_date": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-10-02T10:00:00+02:00"
+          }
+        }
+      },
+      "owner_money_CreateRequest": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "example": "money_added",
+            "enum": [
+              "money_added",
+              "money_taken"
+            ]
+          },
+          "amount": {
+            "type": "number",
+            "example": 5000,
+            "minimum": 0,
+            "exclusiveMinimum": true
+          },
+          "notes": {
+            "type": "string",
+            "example": ""
+          }
+        },
+        "required": [
+          "type",
+          "amount"
+        ]
+      },
+      "report_Summary": {
+        "type": "object",
+        "properties": {
+          "sales_revenue": {
+            "type": "number",
+            "example": 0
+          },
+          "purchases": {
+            "type": "number",
+            "example": 0
+          },
+          "cost_of_items_sold": {
+            "type": "number",
+            "example": 0
+          },
+          "expenses": {
+            "type": "number",
+            "example": 0
+          },
+          "damaged_loss": {
+            "type": "number",
+            "example": 0
+          },
+          "profit_loss": {
+            "type": "number",
+            "example": 0
+          },
+          "items_sold": {
+            "type": "integer",
+            "example": 0
+          },
+          "items_purchased": {
+            "type": "integer",
+            "example": 0
+          },
+          "current_stock": {
+            "type": "integer",
+            "example": 0
+          },
+          "low_stock_count": {
+            "type": "integer",
+            "example": 0
+          }
+        }
+      },
+      "report_Dashboard": {
+        "type": "object",
+        "properties": {
+          "summary": {
+            "$ref": "#/components/schemas/report_Summary"
+          },
+          "inventory_value": {
+            "type": "number",
+            "example": 0
+          },
+          "profit_margin": {
+            "type": "number",
+            "example": 0
+          },
+          "top_products": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/report_ProductSummary"
+            },
+            "nullable": true
+          }
+        }
+      },
+      "report_ProductSummary": {
+        "type": "object",
+        "properties": {
+          "product_id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "11111111-1111-4111-8111-111111111111"
+          },
+          "product_name": {
+            "type": "string",
+            "example": "product_name"
+          },
+          "quantity": {
+            "type": "integer",
+            "example": 5
+          },
+          "revenue": {
+            "type": "number",
+            "example": 0
+          }
+        }
+      },
+      "report_HistoryItem": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "11111111-1111-4111-8111-111111111111"
+          },
+          "type": {
+            "type": "string",
+            "example": "money_added"
+          },
+          "date": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-10-02T10:00:00+02:00"
+          },
+          "description": {
+            "type": "string",
+            "example": ""
+          },
+          "amount": {
+            "type": "number",
+            "example": 5000
+          },
+          "reference_id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "11111111-1111-4111-8111-111111111111"
+          }
+        }
+      },
+      "Error": {
+        "type": "object",
+        "required": [
+          "error"
+        ],
+        "properties": {
+          "error": {
+            "type": "string",
+            "example": "invalid request body"
+          }
+        }
+      },
+      "Message": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string",
+            "example": "Operation completed"
+          }
+        }
+      },
+      "Health": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "example": "ok"
+          },
+          "service": {
+            "type": "string",
+            "example": "bevshop-api"
+          },
+          "postgres": {
+            "type": "string",
+            "example": "ok"
+          },
+          "redis": {
+            "type": "string",
+            "example": "ok"
+          },
+          "time": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-10-02T10:00:00+02:00"
+          }
+        }
+      }
+    }
+  }
+}

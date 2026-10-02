@@ -1,0 +1,88 @@
+services:
+  postgres:
+    image: postgres:18-alpine
+    container_name: bevshop-postgres
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      TZ: ${TZ}
+
+    volumes:
+      - postgres_data:/var/lib/postgresql
+
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+    networks:
+      - bevshop-network
+
+  redis:
+    image: redis:8-alpine
+    container_name: bevshop-redis
+    restart: unless-stopped
+
+    command:
+      [
+        "redis-server",
+        "--appendonly",
+        "yes"
+      ]
+
+    volumes:
+      - redis_data:/data
+
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "redis-cli",
+          "ping"
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+    networks:
+      - bevshop-network
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+    container_name: bevshop-api
+    restart: unless-stopped
+
+    env_file:
+      - .env
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+      redis:
+        condition: service_healthy
+
+    ports:
+      - "${PORT}:${PORT}"
+
+    networks:
+      - bevshop-network
+
+networks:
+  bevshop-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
