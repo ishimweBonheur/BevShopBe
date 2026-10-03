@@ -11,12 +11,12 @@ import (
 )
 
 var (
-	ErrSetupRequired     = errors.New("setup required")
+	ErrSetupRequired      = errors.New("setup required")
 	ErrInvalidCredentials = errors.New("invalid email or password")
-	ErrInvalidName       = errors.New("name is required")
-	ErrInvalidEmail      = errors.New("email is required")
-	ErrInvalidPassword   = errors.New("password must be at least 6 characters")
-	ErrCurrentPassword   = errors.New("current password is invalid")
+	ErrInvalidName        = errors.New("name is required")
+	ErrInvalidEmail       = errors.New("email is required")
+	ErrInvalidPassword    = errors.New("password must be at least 6 characters")
+	ErrCurrentPassword    = errors.New("current password is invalid")
 )
 
 type Service struct {
