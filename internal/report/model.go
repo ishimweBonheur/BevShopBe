@@ -3,16 +3,21 @@ package report
 import "time"
 
 type Summary struct {
-	SalesRevenue   float64 `json:"sales_revenue"`
-	Purchases      float64 `json:"purchases"`
-	CostOfGoods    float64 `json:"cost_of_items_sold"`
-	Expenses       float64 `json:"expenses"`
-	DamagedLoss    float64 `json:"damaged_loss"`
-	ProfitLoss     float64 `json:"profit_loss"`
-	ItemsSold      int     `json:"items_sold"`
-	ItemsPurchased int     `json:"items_purchased"`
-	CurrentStock   int     `json:"current_stock"`
-	LowStockCount  int     `json:"low_stock_count"`
+	DamagedItems    int     `json:"damaged_items"`
+	OutOfStockCount int     `json:"out_of_stock_count"`
+	Cash            float64 `json:"cash"`
+	MobileMoney     float64 `json:"mobile_money"`
+	Bank            float64 `json:"bank"`
+	SalesRevenue    float64 `json:"sales_revenue"`
+	Purchases       float64 `json:"purchases"`
+	CostOfGoods     float64 `json:"cost_of_items_sold"`
+	Expenses        float64 `json:"expenses"`
+	DamagedLoss     float64 `json:"damaged_loss"`
+	ProfitLoss      float64 `json:"profit_loss"`
+	ItemsSold       int     `json:"items_sold"`
+	ItemsPurchased  int     `json:"items_purchased"`
+	CurrentStock    int     `json:"current_stock"`
+	LowStockCount   int     `json:"low_stock_count"`
 }
 
 type Dashboard struct {
@@ -46,10 +51,16 @@ type Period struct {
 	To   time.Time `json:"to"`
 }
 
+type MonthlySummary struct {
+	Month   string  `json:"month"`
+	Summary Summary `json:"summary"`
+}
+
 type PrintableReport struct {
-	Title       string        `json:"title"`
-	Period      Period        `json:"period"`
-	GeneratedAt time.Time     `json:"generated_at"`
-	Summary     Summary       `json:"summary"`
-	History     []HistoryItem `json:"history"`
+	Monthly     []MonthlySummary `json:"monthly"`
+	Title       string           `json:"title"`
+	Period      Period           `json:"period"`
+	GeneratedAt time.Time        `json:"generated_at"`
+	Summary     Summary          `json:"summary"`
+	History     []HistoryItem    `json:"history"`
 }

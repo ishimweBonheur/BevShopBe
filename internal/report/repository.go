@@ -93,8 +93,13 @@ func (r *Repository) Summary(
 				FROM products
 				WHERE is_active = TRUE
 				  AND current_stock <= low_stock_level
-			), 0)
-	`, from, to).Scan(
+			), 0),
+ COALESCE((SELECT SUM(quantity) FROM damaged_items WHERE damaged_date >= $1 AND damaged_date < $2), 0),
+ (SELECT COUNT(*) FROM products WHERE is_active AND current_stock = 0),
+ COALESCE((SELECT SUM(total_amount) FROM sales WHERE sale_date >= $1 AND sale_date < $2 AND payment_method='cash'), 0),
+ COALESCE((SELECT SUM(total_amount) FROM sales WHERE sale_date >= $1 AND sale_date < $2 AND payment_method='mobile_money'), 0),
+ COALESCE((SELECT SUM(total_amount) FROM sales WHERE sale_date >= $1 AND sale_date < $2 AND payment_method='bank'), 0)
+ `, from, to).Scan(
 		&result.SalesRevenue,
 		&result.Purchases,
 		&result.CostOfGoods,
@@ -104,6 +109,7 @@ func (r *Repository) Summary(
 		&result.ItemsPurchased,
 		&result.CurrentStock,
 		&result.LowStockCount,
+		&result.DamagedItems, &result.OutOfStockCount, &result.Cash, &result.MobileMoney, &result.Bank,
 	)
 
 	if err != nil {
@@ -194,10 +200,25 @@ func (r *Repository) Printable(ctx context.Context, from, to time.Time) (Printab
 	if err != nil {
 		return PrintableReport{}, err
 	}
+	monthly := make([]MonthlySummary, 0)
+	for start := time.Date(from.Year(), from.Month(), 1, 0, 0, 0, 0, from.Location()); start.Before(to); start = start.AddDate(0, 1, 0) {
+		lower, upper := start, start.AddDate(0, 1, 0)
+		if lower.Before(from) {
+			lower = from
+		}
+		if upper.After(to) {
+			upper = to
+		}
+		totals, err := snapshot.Summary(ctx, lower, upper)
+		if err != nil {
+			return PrintableReport{}, err
+		}
+		monthly = append(monthly, MonthlySummary{Month: start.Format("2006-01"), Summary: totals})
+	}
 	if err := tx.Commit(ctx); err != nil {
 		return PrintableReport{}, err
 	}
-	return PrintableReport{Title: "BevShop Business Report", Period: Period{From: from, To: to}, GeneratedAt: time.Now(), Summary: summary, History: history}, nil
+	return PrintableReport{Title: "BevShop Business Report", Period: Period{From: from, To: to}, GeneratedAt: time.Now(), Summary: summary, History: history, Monthly: monthly}, nil
 }
 
 const historySQL = `

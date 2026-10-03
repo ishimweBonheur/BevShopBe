@@ -2331,22 +2331,20 @@
             "name": "from",
             "in": "query",
             "required": false,
-            "description": "Inclusive start, as an RFC3339 timestamp with timezone. Date-only strings are not supported.",
+            "description": "Supply both from and to. YYYY-MM-DD uses Kigali calendar dates with an inclusive final day. RFC3339 timestamps use an exclusive end.",
             "schema": {
               "type": "string",
-              "format": "date-time",
-              "example": "2026-10-01T00:00:00+02:00"
+              "example": "2026-10-03"
             }
           },
           {
             "name": "to",
             "in": "query",
             "required": false,
-            "description": "Exclusive end, as an RFC3339 timestamp with timezone. Date-only strings are not supported.",
+            "description": "Supply both from and to. YYYY-MM-DD uses Kigali calendar dates with an inclusive final day. RFC3339 timestamps use an exclusive end.",
             "schema": {
               "type": "string",
-              "format": "date-time",
-              "example": "2026-11-01T00:00:00+02:00"
+              "example": "2026-10-03"
             }
           }
         ]
@@ -2357,63 +2355,21 @@
         "tags": [
           "Reports"
         ],
-        "summary": "Get printable report",
-        "operationId": "report_print",
+        "summary": "Get complete printable report data",
+        "operationId": "report_printable",
         "responses": {
           "200": {
-            "description": "Successful response",
+            "description": "Complete report snapshot.",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "required": [
-                    "title",
-                    "period",
-                    "generated_at",
-                    "summary",
-                    "history"
-                  ],
-                  "properties": {
-                    "title": {
-                      "type": "string"
-                    },
-                    "period": {
-                      "type": "object",
-                      "required": [
-                        "from",
-                        "to"
-                      ],
-                      "properties": {
-                        "from": {
-                          "type": "string",
-                          "format": "date-time"
-                        },
-                        "to": {
-                          "type": "string",
-                          "format": "date-time"
-                        }
-                      }
-                    },
-                    "generated_at": {
-                      "type": "string",
-                      "format": "date-time"
-                    },
-                    "summary": {
-                      "$ref": "#/components/schemas/report_Summary"
-                    },
-                    "history": {
-                      "type": "array",
-                      "items": {
-                        "$ref": "#/components/schemas/report_HistoryItem"
-                      }
-                    }
-                  }
+                  "$ref": "#/components/schemas/report_PrintableReport"
                 }
               }
             }
           },
           "400": {
-            "description": "Invalid date range or period.",
+            "description": "Invalid request body or field values.",
             "content": {
               "application/json": {
                 "schema": {
@@ -2423,7 +2379,7 @@
             }
           },
           "401": {
-            "description": "Missing, invalid, expired or revoked token.",
+            "description": "Missing, invalid, expired or revoked token; invalid credentials.",
             "content": {
               "application/json": {
                 "schema": {
@@ -2448,7 +2404,7 @@
             "name": "period",
             "in": "query",
             "required": false,
-            "description": "Calendar period in Africa/Kigali.",
+            "description": "Calendar period in Africa/Kigali. A valid from or to overrides this period.",
             "schema": {
               "type": "string",
               "enum": [
@@ -2464,23 +2420,24 @@
             "name": "from",
             "in": "query",
             "required": false,
-            "description": "Inclusive start as YYYY-MM-DD or an RFC3339 timestamp.",
+            "description": "Supply both from and to. YYYY-MM-DD uses Kigali calendar dates with an inclusive final day. RFC3339 timestamps use an exclusive end.",
             "schema": {
               "type": "string",
-              "example": "2026-10-01"
+              "example": "2026-10-03"
             }
           },
           {
             "name": "to",
             "in": "query",
             "required": false,
-            "description": "Inclusive end date as YYYY-MM-DD or exclusive RFC3339 timestamp.",
+            "description": "Supply both from and to. YYYY-MM-DD uses Kigali calendar dates with an inclusive final day. RFC3339 timestamps use an exclusive end.",
             "schema": {
               "type": "string",
-              "example": "2026-10-31"
+              "example": "2026-10-03"
             }
           }
-        ]
+        ],
+        "description": "Read-only consistent snapshot of summary totals, payment and stock counts, monthly summaries and ALL history rows. No pagination or truncation. The frontend uses this same response for the screen and downloadable PDF."
       }
     },
     "/api/v1/reports/dashboard": {
@@ -3557,6 +3514,26 @@
           "low_stock_count": {
             "type": "integer",
             "example": 0
+          },
+          "damaged_items": {
+            "type": "integer",
+            "example": 0
+          },
+          "out_of_stock_count": {
+            "type": "integer",
+            "example": 0
+          },
+          "cash": {
+            "type": "number",
+            "example": 0
+          },
+          "mobile_money": {
+            "type": "number",
+            "example": 0
+          },
+          "bank": {
+            "type": "number",
+            "example": 0
           }
         }
       },
@@ -3634,6 +3611,19 @@
             "type": "string",
             "format": "uuid",
             "example": "11111111-1111-4111-8111-111111111111"
+          },
+          "category": {
+            "type": "string",
+            "example": "Soft Drinks"
+          },
+          "quantity": {
+            "type": "integer",
+            "nullable": true,
+            "example": 5
+          },
+          "details": {
+            "type": "string",
+            "example": "Payment: cash; unit price: 700; cost: 500"
           }
         }
       },
@@ -3681,6 +3671,62 @@
             "type": "string",
             "format": "date-time",
             "example": "2026-10-02T10:00:00+02:00"
+          }
+        }
+      },
+      "report_Period": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "to": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Exclusive end of the selected period."
+          }
+        }
+      },
+      "report_MonthlySummary": {
+        "type": "object",
+        "properties": {
+          "month": {
+            "type": "string",
+            "example": "2026-10"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/report_Summary"
+          }
+        }
+      },
+      "report_PrintableReport": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "period": {
+            "$ref": "#/components/schemas/report_Period"
+          },
+          "generated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/report_Summary"
+          },
+          "history": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/report_HistoryItem"
+            }
+          },
+          "monthly": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/report_MonthlySummary"
+            }
           }
         }
       }

@@ -1,0 +1,86 @@
+name: Backend CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Test Backend
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgresql
+          POSTGRES_PASSWORD: 1234
+          POSTGRES_DB: beverages
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgresql -d beverages"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_HOST: localhost
+      DATABASE_PORT: 5432
+      DATABASE_NAME: beverages
+      DATABASE_USER: postgresql
+      DATABASE_PASSWORD: 1234
+
+      REDIS_HOST: localhost
+      REDIS_PORT: 6379
+
+      JWT_SECRET: github-actions-test-secret
+      APP_ENV: test
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Check formatting
+        run: |
+          test -z "$(gofmt -l .)" || {
+            echo "Go files are not formatted:"
+            gofmt -l .
+            exit 1
+          }
+
+      - name: Run go vet
+        run: go vet ./...
+
+      - name: Run tests
+        run: go test -v ./...
+
+      - name: Build backend
+        run: go build -o bin/bevshop ./cmd/api
+
+      - name: Build Docker image
+        run: docker build -t bevshop-api:test .
