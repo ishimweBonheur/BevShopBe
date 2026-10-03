@@ -29,6 +29,45 @@ type HealthResponse struct {
 	Time     string `json:"time"`
 }
 
+func corsMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		origin := r.Header.Get("Origin")
+
+		allowedOrigins := map[string]bool{
+			"http://localhost:5173":            true,
+			"http://127.0.0.1:5173":            true,
+			"https://beverages-six.vercel.app": true,
+		}
+
+		if allowedOrigins[origin] {
+			w.Header().Set("Access-Control-Allow-Origin", origin)
+			w.Header().Set("Vary", "Origin")
+		}
+
+		w.Header().Set(
+			"Access-Control-Allow-Methods",
+			"GET, POST, PUT, PATCH, DELETE, OPTIONS",
+		)
+
+		w.Header().Set(
+			"Access-Control-Allow-Headers",
+			"Authorization, Content-Type",
+		)
+
+		w.Header().Set(
+			"Access-Control-Max-Age",
+			"86400",
+		)
+
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
+}
+
 func main() {
 	// Rwanda timezone
 	location, err := time.LoadLocation("Africa/Kigali")
@@ -59,6 +98,8 @@ func main() {
 
 	// Router
 	mux := http.NewServeMux()
+
+	// JWT middleware
 	jwtMiddleware := auth.NewMiddleware(cfg.JWTSecret, redisClient)
 
 	// Health
@@ -79,8 +120,10 @@ func main() {
 		}
 	})
 
+	// Swagger / docs
 	docs.Register(mux)
 
+	// Auth
 	authRepo := auth.NewRepository(db)
 	authService := auth.NewService(authRepo, cfg.JWTSecret)
 	authHandler := auth.NewHandler(authService, redisClient)
@@ -140,10 +183,14 @@ func main() {
 	reportHandler := report.NewHandler(reportService)
 	reportHandler.Register(mux)
 
+	// Middleware order:
+	// browser -> CORS -> JWT -> routes
+	handler := corsMiddleware(jwtMiddleware.Wrap(mux))
+
 	// HTTP server
 	server := &http.Server{
 		Addr:              ":" + cfg.Port,
-		Handler:           jwtMiddleware.Wrap(mux),
+		Handler:           handler,
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       10 * time.Second,
 		WriteTimeout:      10 * time.Second,
